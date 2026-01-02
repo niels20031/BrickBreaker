@@ -6,7 +6,7 @@ from brickbreaker.constants import *
 
 class Bal:
     def __init__(self, x, y):
-        self.radius = 6
+        self.radius = 40
         self.x = float(x)
         self.y = float(y)
         self.vx = 0.0

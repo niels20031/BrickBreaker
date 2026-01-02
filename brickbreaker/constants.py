@@ -4,7 +4,7 @@ SCREEN_HEIGHT = 1080
 FPS = 60
 
 # Ball image path (None to use default)
-BALL_IMAGE_PATH = None
+BALL_IMAGE_PATH = "img/Rein.JPEG"
 
 # Colors
 BLACK = (0, 0, 0)
