@@ -8,6 +8,7 @@ import json
 import os
 import random
 from enum import Enum
+import traceback
 
 # Enum voor spelstatussen
 
@@ -19,6 +20,7 @@ class GameState(Enum):
 
 
 pygame.init()
+pygame.font.init()
 
 HIGH_SCORE_FILE = "high_score.json"
 
@@ -69,7 +71,8 @@ class Game:
                 self.on_resize()
             except Exception:
                 pass
-        except Exception:
+        except Exception as e:
+            print("setup_display fullscreen failed:", e)
             # fallback
             self.screen = pygame.display.set_mode(self.windowed_size)
             self.native_size = self.windowed_size
@@ -494,6 +497,7 @@ class Game:
                 self.update()
                 self.draw()
             except Exception:
+                traceback.print_exc()
                 self.running = False
             self.clock.tick(FPS)
 
@@ -504,6 +508,6 @@ if __name__ == "__main__":
         game = Game()
         game.run()
     except Exception as e:
-        print("Unhandled exception:", e)
+        traceback.print_exc()
     finally:
         pygame.quit()
