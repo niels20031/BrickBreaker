@@ -16,7 +16,7 @@ class Bal:
         self.speed = self.base_speed
         self.rect = pygame.Rect(x - self.radius, y -
                                 self.radius, self.radius * 2, self.radius * 2)
-        self.image = None
+        self.image = "img\Rein.JPEG"
         self.load_image()
 
     def load_image(self):
