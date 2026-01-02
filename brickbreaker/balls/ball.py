@@ -3,6 +3,7 @@ import os
 import random
 from brickbreaker.constants import *
 
+
 class Bal:
     def __init__(self, x, y):
         self.radius = 6
@@ -13,7 +14,8 @@ class Bal:
         self.launched = False
         self.base_speed = 5.0
         self.speed = self.base_speed
-        self.rect = pygame.Rect(x - self.radius, y - self.radius, self.radius * 2, self.radius * 2)
+        self.rect = pygame.Rect(x - self.radius, y -
+                                self.radius, self.radius * 2, self.radius * 2)
         self.image = None
         self.load_image()
 
@@ -22,7 +24,8 @@ class Bal:
         if BALL_IMAGE and os.path.exists(BALL_IMAGE):
             try:
                 self.image = pygame.image.load(BALL_IMAGE).convert_alpha()
-                self.image = pygame.transform.scale(self.image, (self.radius * 2, self.radius * 2))
+                self.image = pygame.transform.scale(
+                    self.image, (self.radius * 2, self.radius * 2))
             except Exception as e:
                 print(f"Could not load ball image: {e}")
                 self.image = None
@@ -39,9 +42,13 @@ class Bal:
             self.x += self.vx
             self.y += self.vy
 
-            if self.x - self.radius < 0 or self.x + self.radius > SCREEN_WIDTH:
+            surf = pygame.display.get_surface()
+            sw = surf.get_width() if surf else SCREEN_WIDTH
+            sh = surf.get_height() if surf else SCREEN_HEIGHT
+
+            if self.x - self.radius < 0 or self.x + self.radius > sw:
                 self.vx = -self.vx
-                self.x = max(self.radius, min(SCREEN_WIDTH - self.radius, self.x))
+                self.x = max(self.radius, min(sw - self.radius, self.x))
 
             if self.y - self.radius < 0:
                 self.vy = -self.vy
@@ -70,9 +77,11 @@ class Bal:
 
     def draw(self, screen):
         if self.image:
-            screen.blit(self.image, (int(self.x) - self.radius, int(self.y) - self.radius))
+            screen.blit(self.image, (int(self.x) - self.radius,
+                        int(self.y) - self.radius))
         else:
-            pygame.draw.circle(screen, WHITE, (int(self.x), int(self.y)), self.radius)
+            pygame.draw.circle(
+                screen, WHITE, (int(self.x), int(self.y)), self.radius)
 
 
 class BalBeheer:

@@ -1,5 +1,3 @@
-# yo
-
 from brickbreaker.balls import Bal, BalBeheer
 from brickbreaker.paddles import Peddel
 from brickbreaker.bricks import Baksteen
@@ -9,7 +7,6 @@ import pygame
 import json
 import os
 import random
-import math
 from enum import Enum
 
 # Enum voor spelstatussen
@@ -17,33 +14,20 @@ from enum import Enum
 
 class GameState(Enum):
     MENU = 1
-    SETTINGS = 2
-    LEVEL_SELECT = 3
-    PLAYING = 4
-    LEVEL_COMPLETE = 5
-    GAME_OVER = 6
+    PLAYING = 2
+    GAME_OVER = 3
 
 
-# Pygame setup
 pygame.init()
-# animaties verwijderd
 
-# Settings removed
 HIGH_SCORE_FILE = "high_score.json"
 
-# High score data
-DEFAULT_HIGH_SCORE = {
-    "score": 0,
-    "level": 1,
-    "date": "Never",
-    "infinite_score": 0,
-    "infinite_date": "Never"
-}
+DEFAULT_HIGH_SCORE = {"infinite_score": 0, "infinite_date": "Never"}
 
 
 class Game:
     def __init__(self):
-        # Instellingen verwijderd; hou minimale staat
+        # minimale staat
         self.settings = {}
         self.high_score_data = self.load_high_score()
         # remember preferred windowed size from constants
@@ -52,6 +36,8 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = GameState.MENU
+        # always infinite mode only
+        self.infinite_mode = True
         self.current_level = 1
         self.lives = 3
         self.score = 0
@@ -59,8 +45,6 @@ class Game:
         self.font_medium = pygame.font.Font(None, 48)
         self.font_small = pygame.font.Font(None, 36)
         self.font_tiny = pygame.font.Font(None, 28)
-
-        # Geluid verwijderd
 
         # Initialiseer spelobjecten
         self.reset_game()
@@ -72,13 +56,19 @@ class Game:
             info = pygame.display.Info()
             native_w, native_h = info.current_w, info.current_h
             # Use native fullscreen mode
-            self.screen = pygame.display.set_mode((native_w, native_h), pygame.FULLSCREEN)
+            self.screen = pygame.display.set_mode(
+                (native_w, native_h), pygame.FULLSCREEN)
             # update module-level width/height so rest of code uses new values
             globals()['SCREEN_WIDTH'] = native_w
             globals()['SCREEN_HEIGHT'] = native_h
             # store sizes for toggling
             self.native_size = (native_w, native_h)
             self.fullscreen = True
+            # ensure objects (if any) fit the new size
+            try:
+                self.on_resize()
+            except Exception:
+                pass
         except Exception:
             # fallback
             self.screen = pygame.display.set_mode(self.windowed_size)
@@ -92,32 +82,26 @@ class Game:
     def load_high_score(self):
         if os.path.exists(HIGH_SCORE_FILE):
             try:
-                with open(HIGH_SCORE_FILE, 'r') as f:
+                with open(HIGH_SCORE_FILE, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except (json.JSONDecodeError, OSError):
                 return DEFAULT_HIGH_SCORE.copy()
         return DEFAULT_HIGH_SCORE.copy()
 
     def save_high_score(self):
-        with open(HIGH_SCORE_FILE, 'w') as f:
-            json.dump(self.high_score_data, f, indent=2)
+        try:
+            with open(HIGH_SCORE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.high_score_data, f, indent=2)
+        except OSError as e:
+            print("Failed to save high score:", e)
 
     def update_high_score(self):
         from datetime import datetime
-        # Werk normale of oneindige highscore bij, afhankelijk van modus
-        if getattr(self, 'infinite_mode', False):
-            if self.score > self.high_score_data.get("infinite_score", 0):
-                self.high_score_data["infinite_score"] = self.score
-                self.high_score_data["infinite_date"] = datetime.now().strftime(
-                    "%Y-%m-%d %H:%M")
-                self.save_high_score()
-        else:
-            if self.score > self.high_score_data.get("score", 0):
-                self.high_score_data["score"] = self.score
-                self.high_score_data["level"] = self.current_level
-                self.high_score_data["date"] = datetime.now().strftime(
-                    "%Y-%m-%d %H:%M")
-                self.save_high_score()
+        if self.score > self.high_score_data.get("infinite_score", 0):
+            self.high_score_data["infinite_score"] = self.score
+            self.high_score_data["infinite_date"] = datetime.now().strftime(
+                "%Y-%m-%d %H:%M")
+            self.save_high_score()
 
     # Geluidsafhandeling verwijderd
 
@@ -149,44 +133,32 @@ class Game:
         self.peddel = Peddel(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50)
         self.bal_beheer = BalBeheer()
         self.bal_beheer.add_ball(Bal(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80))
-        self.bricks = self.create_level(self.current_level)
+        self.bricks = self.create_infinite_level(self.current_level)
         self.powerups = []
-        # animations removed
         self.game_active = True
         self.slow_ball_active = False
         self.slow_ball_duration = 0
         self.damage_multiplier = 1
         self.damage_duration = 0
 
-    def create_level(self, level):
-        bricks = []
-        rows = 2 + level
-        cols = 8
-        brick_width = 140
-        brick_height = 25
-        padding = 5
-        start_x = (SCREEN_WIDTH - (cols * (brick_width + padding))) // 2
-        start_y = 50
+    def on_resize(self):
+        # Ensure paddle and balls fit new screen size; regenerate bricks
+        if hasattr(self, 'peddel'):
+            self.peddel.x = max(
+                0, min(self.peddel.x, SCREEN_WIDTH - self.peddel.width))
+            self.peddel.update_rect()
+        if hasattr(self, 'bal_beheer'):
+            for b in self.bal_beheer.balls:
+                b.x = max(b.radius, min(b.x, SCREEN_WIDTH - b.radius))
+                b.y = max(b.radius, min(b.y, SCREEN_HEIGHT - b.radius))
+                b.rect.center = (int(b.x), int(b.y))
+        # regenerate layout so bricks fit new width
+        try:
+            self.bricks = self.create_infinite_level(self.current_level)
+        except Exception:
+            pass
 
-        # Distribute brick colors: Green (1 hit), Yellow (2 hits), Red (5 hits)
-        brick_colors = []
-        for row in range(rows):
-            if row < rows // 3:
-                brick_colors.extend([GREEN] * cols)
-            elif row < 2 * rows // 3:
-                brick_colors.extend([YELLOW] * cols)
-            else:
-                brick_colors.extend([RED] * cols)
-
-        for row in range(rows):
-            for col in range(cols):
-                x = start_x + col * (brick_width + padding)
-                y = start_y + row * (brick_height + padding)
-                color = [GREEN, YELLOW, RED][min(
-                    row // (max(1, rows // 3)), 2)]
-                bricks.append(Baksteen(x, y, brick_width, brick_height, color))
-
-        return bricks
+    # only infinite generator remains
 
     def create_infinite_level(self, level_index):
         """Generate a random brick layout for infinite mode.
@@ -240,98 +212,60 @@ class Game:
                     try:
                         if getattr(self, 'fullscreen', False):
                             # switch to windowed
-                            self.screen = pygame.display.set_mode(self.windowed_size)
-                            globals()['SCREEN_WIDTH'], globals()['SCREEN_HEIGHT'] = self.windowed_size
+                            self.screen = pygame.display.set_mode(
+                                self.windowed_size)
+                            globals()['SCREEN_WIDTH'], globals()[
+                                'SCREEN_HEIGHT'] = self.windowed_size
                             self.fullscreen = False
+                            try:
+                                self.on_resize()
+                            except Exception:
+                                pass
                         else:
                             # switch to native fullscreen
-                            self.screen = pygame.display.set_mode(self.native_size, pygame.FULLSCREEN)
-                            globals()['SCREEN_WIDTH'], globals()['SCREEN_HEIGHT'] = self.native_size
+                            self.screen = pygame.display.set_mode(
+                                self.native_size, pygame.FULLSCREEN)
+                            globals()['SCREEN_WIDTH'], globals()[
+                                'SCREEN_HEIGHT'] = self.native_size
                             self.fullscreen = True
+                            try:
+                                self.on_resize()
+                            except Exception:
+                                pass
                     except Exception:
                         pass
 
                 if event.key == pygame.K_ESCAPE:
-                    # From menu: quit. From other screens: back to menu.
                     if self.state == GameState.MENU:
                         try:
                             self.update_high_score()
                         except Exception:
                             pass
                         self.running = False
-                    elif self.state == GameState.PLAYING:
+                    else:
+                        # go back to menu from any other state
                         self.state = GameState.MENU
-                    elif self.state in [GameState.LEVEL_SELECT]:
-                        self.state = GameState.MENU
-                    elif self.state in [GameState.LEVEL_COMPLETE, GameState.GAME_OVER]:
-                        self.state = GameState.MENU
-                        self.current_level = 1
-                        self.lives = 3
-                        self.score = 0
 
-                # Menu/Settings input
-                if self.state == GameState.MENU:
-                    # Start infinite mode on SPACE/RETURN
-                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE or event.key == pygame.K_i:
-                        self.infinite_mode = True
-                        self.current_level = 1
-                        self.lives = 3
-                        self.score = 0
-                        self.reset_game()
-                        # replace bricks with an infinite-generated level
-                        self.bricks = self.create_infinite_level(
-                            self.current_level)
-                        self.state = GameState.PLAYING
+                # Menu input: start infinite mode
+                if self.state == GameState.MENU and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE or event.key == pygame.K_i):
+                    self.current_level = 1
+                    self.lives = 3
+                    self.score = 0
+                    self.reset_game()
+                    self.state = GameState.PLAYING
 
                 # Settings removed
 
-                # Level select input
-                elif self.state == GameState.LEVEL_SELECT:
-                    if event.key == pygame.K_1:
-                        self.current_level = 1
-                        self.lives = 3
-                        self.score = 0
-                        self.reset_game()
-                        self.state = GameState.PLAYING
-                    elif event.key == pygame.K_2:
-                        self.current_level = 2
-                        self.lives = 3
-                        self.score = 0
-                        self.reset_game()
-                        self.state = GameState.PLAYING
-                    elif event.key == pygame.K_3:
-                        self.current_level = 3
-                        self.lives = 3
-                        self.score = 0
-                        self.reset_game()
-                        self.state = GameState.PLAYING
-
                 # Game input
-                elif self.state == GameState.PLAYING:
-                    if event.key == pygame.K_SPACE:
-                        self.bal_beheer.launch_all()
+                elif self.state == GameState.PLAYING and event.key == pygame.K_SPACE:
+                    self.bal_beheer.launch_all()
 
-                # Level complete
-                elif self.state == GameState.LEVEL_COMPLETE:
-                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                        self.current_level += 1
-                        if self.current_level > 5:
-                            self.state = GameState.MENU
-                            self.current_level = 1
-                            self.lives = 3
-                            self.score = 0
-                        else:
-                            self.reset_game()
-                            self.state = GameState.PLAYING
-
-                # Game over
+                # Game over: any key returns to menu
                 elif self.state == GameState.GAME_OVER:
-                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                        self.current_level = 1
-                        self.lives = 3
-                        self.score = 0
-                        self.reset_game()
-                        self.state = GameState.LEVEL_SELECT
+                    self.current_level = 1
+                    self.lives = 3
+                    self.score = 0
+                    self.state = GameState.MENU
 
     def update(self):
         if self.state == GameState.PLAYING and self.game_active:
@@ -430,39 +364,23 @@ class Game:
                                    SCREEN_HEIGHT - 80)
                     self.bal_beheer.add_ball(new_ball)
 
-            # Level complete
+            # Level complete (infinite-only): genereer nieuw niveau
             if len(self.bricks) == 0:
-                # Oneindige modus: genereer nieuw niveau
-                if getattr(self, 'infinite_mode', False):
-                    self.current_level += 1
-                    self.score += 200 * self.current_level
-                    try:
-                        self.update_high_score()
-                    except Exception:
-                        pass
-                    # generate next infinite level
-                    self.bricks = self.create_infinite_level(
-                        self.current_level)
-                else:
-                    self.state = GameState.LEVEL_COMPLETE
-                    self.score += 500 * self.current_level
-                    try:
-                        self.update_high_score()
-                    except Exception:
-                        pass
+                self.current_level += 1
+                self.score += 200 * self.current_level
+                try:
+                    self.update_high_score()
+                except Exception:
+                    pass
+                self.bricks = self.create_infinite_level(self.current_level)
 
     def draw(self):
         self.screen.fill(DARK_BLUE)
 
         if self.state == GameState.MENU:
             self.draw_menu()
-
-        elif self.state == GameState.LEVEL_SELECT:
-            self.draw_level_select()
         elif self.state == GameState.PLAYING:
             self.draw_game()
-        elif self.state == GameState.LEVEL_COMPLETE:
-            self.draw_level_complete()
         elif self.state == GameState.GAME_OVER:
             self.draw_game_over()
 
@@ -483,7 +401,7 @@ class Game:
             infinite_text, ((SCREEN_WIDTH - infinite_text.get_width()) // 2, 280))
 
         start_text = self.font_medium.render(
-            "Druk SPATIE om Oneindige Modus te starten", True, LIGHT_BLUE)
+            "Druk SPATIE of I om Oneindige Modus te starten", True, LIGHT_BLUE)
         self.screen.blit(
             start_text, ((SCREEN_WIDTH - start_text.get_width()) // 2, 320))
 
@@ -492,28 +410,7 @@ class Game:
         self.screen.blit(
             quit_text, ((SCREEN_WIDTH - quit_text.get_width()) // 2, 500))
 
-    def draw_level_select(self):
-        title = self.font_large.render("KIES NIVEAU", True, WHITE)
-        self.screen.blit(title, ((SCREEN_WIDTH - title.get_width()) // 2, 100))
-
-        for level in range(1, 6):
-            if level <= 3:
-                y = 300
-                x = 300 + (level - 1) * 250
-                color = YELLOW if level <= 3 else GRAY
-                level_text = self.font_medium.render(
-                    f"Niveau {level}", True, color)
-                self.screen.blit(
-                    level_text, (x - level_text.get_width() // 2, y))
-
-        level_3_text = self.font_medium.render("Niveau 3", True, GRAY)
-        self.screen.blit(
-            level_3_text, ((SCREEN_WIDTH - level_3_text.get_width()) // 2, 400))
-
-        instructions = self.font_small.render(
-            "Druk 1, 2, of 3 om te starten", True, LIGHT_BLUE)
-        self.screen.blit(
-            instructions, ((SCREEN_WIDTH - instructions.get_width()) // 2, 550))
+    # level selection removed (infinite-only mode)
 
     def draw_game(self):
         self.peddel.draw(self.screen)
@@ -568,29 +465,7 @@ class Game:
             self.screen.blit(
                 launch_text, ((SCREEN_WIDTH - launch_text.get_width()) // 2, SCREEN_HEIGHT - 30))
 
-    def draw_level_complete(self):
-        complete_text = self.font_large.render("NIVEAU VOLTOOID!", True, GREEN)
-        self.screen.blit(
-            complete_text, ((SCREEN_WIDTH - complete_text.get_width()) // 2, 150))
-
-        score_text = self.font_medium.render(
-            f"Score: {self.score}", True, YELLOW)
-        self.screen.blit(
-            score_text, ((SCREEN_WIDTH - score_text.get_width()) // 2, 300))
-
-        if self.current_level >= 5:
-            next_text = self.font_small.render(
-                "Je hebt alle niveaus verslagen!", True, LIGHT_BLUE)
-        else:
-            next_text = self.font_small.render(
-                f"Volgende: Niveau {self.current_level + 1}", True, LIGHT_BLUE)
-        self.screen.blit(
-            next_text, ((SCREEN_WIDTH - next_text.get_width()) // 2, 400))
-
-        continue_text = self.font_small.render(
-            "Druk SPATIE om door te gaan", True, YELLOW)
-        self.screen.blit(
-            continue_text, ((SCREEN_WIDTH - continue_text.get_width()) // 2, 500))
+    # level-complete screen removed for infinite-only mode
 
     def draw_game_over(self):
         game_over_text = self.font_large.render("GAME OVER", True, RED)
@@ -613,16 +488,22 @@ class Game:
             restart_text, ((SCREEN_WIDTH - restart_text.get_width()) // 2, 500))
 
     def run(self):
-        dt = 0
         while self.running:
-            self.handle_events()
-            self.update()
-            self.draw()
-            dt = self.clock.tick(FPS) / 1000
+            try:
+                self.handle_events()
+                self.update()
+                self.draw()
+            except Exception:
+                self.running = False
+            self.clock.tick(FPS)
 
 
 # Run the game
 if __name__ == "__main__":
-    game = Game()
-    game.run()
-    pygame.quit()
+    try:
+        game = Game()
+        game.run()
+    except Exception as e:
+        print("Unhandled exception:", e)
+    finally:
+        pygame.quit()

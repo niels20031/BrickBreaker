@@ -1,6 +1,7 @@
 import pygame
 from brickbreaker.constants import *
 
+
 class Peddel:
     def __init__(self, x, y):
         # Basisinstellingen voor de peddel
@@ -17,10 +18,15 @@ class Peddel:
     def move(self, direction):
         # Verplaats de peddel zijwaarts
         self.x += direction * self.speed
-        self.x = max(0, min(self.x, SCREEN_WIDTH - self.width))
+        surf = pygame.display.get_surface()
+        max_w = surf.get_width() if surf else SCREEN_WIDTH
+        self.x = max(0, min(self.x, max_w - self.width))
         self.update_rect()
 
     def update_rect(self):
+        surf = pygame.display.get_surface()
+        max_w = surf.get_width() if surf else SCREEN_WIDTH
+        self.x = max(0, min(self.x, max_w - self.width))
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
     def activate_wider(self):
