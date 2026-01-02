@@ -46,6 +46,8 @@ class Game:
         # Instellingen verwijderd; hou minimale staat
         self.settings = {}
         self.high_score_data = self.load_high_score()
+        # remember preferred windowed size from constants
+        self.windowed_size = (SCREEN_WIDTH, SCREEN_HEIGHT)
         self.setup_display()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -64,8 +66,25 @@ class Game:
         self.reset_game()
 
     def setup_display(self):
-        # Instellingen verwijderd; altijd venster op vaste resolutie
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # Try to open fullscreen at the monitor's native resolution.
+        # Fall back to the configured SCREEN_WIDTH/HEIGHT when necessary.
+        try:
+            info = pygame.display.Info()
+            native_w, native_h = info.current_w, info.current_h
+            # Use native fullscreen mode
+            self.screen = pygame.display.set_mode((native_w, native_h), pygame.FULLSCREEN)
+            # update module-level width/height so rest of code uses new values
+            globals()['SCREEN_WIDTH'] = native_w
+            globals()['SCREEN_HEIGHT'] = native_h
+            # store sizes for toggling
+            self.native_size = (native_w, native_h)
+            self.fullscreen = True
+        except Exception:
+            # fallback
+            self.screen = pygame.display.set_mode(self.windowed_size)
+            self.native_size = self.windowed_size
+            self.fullscreen = False
+
         pygame.display.set_caption("Brick Breaker")
 
     # Instellingen verwijderd: load_settings en save_settings verwijderd
@@ -216,6 +235,22 @@ class Game:
                     pass
                 self.running = False
             elif event.type == pygame.KEYDOWN:
+                # Toggle fullscreen with F11
+                if event.key == pygame.K_F11:
+                    try:
+                        if getattr(self, 'fullscreen', False):
+                            # switch to windowed
+                            self.screen = pygame.display.set_mode(self.windowed_size)
+                            globals()['SCREEN_WIDTH'], globals()['SCREEN_HEIGHT'] = self.windowed_size
+                            self.fullscreen = False
+                        else:
+                            # switch to native fullscreen
+                            self.screen = pygame.display.set_mode(self.native_size, pygame.FULLSCREEN)
+                            globals()['SCREEN_WIDTH'], globals()['SCREEN_HEIGHT'] = self.native_size
+                            self.fullscreen = True
+                    except Exception:
+                        pass
+
                 if event.key == pygame.K_ESCAPE:
                     # From menu: quit. From other screens: back to menu.
                     if self.state == GameState.MENU:
