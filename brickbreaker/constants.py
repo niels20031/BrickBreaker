@@ -1,12 +1,12 @@
-# Screen and general constants
+# Scherm en constante variabelen
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 FPS = 60
 
-# Ball image path (None to use default)
+# Bal image pad
 BALL_IMAGE_PATH = "img/Rein.JPEG"
 
-# Colors
+# Kleuren
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 DARK_BLUE = (25, 41, 74)
