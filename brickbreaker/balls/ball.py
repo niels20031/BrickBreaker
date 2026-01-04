@@ -3,6 +3,10 @@ import os
 import random
 from brickbreaker.constants import *
 
+# =========================
+# NIELS – BACKEND
+# Bal en BalBeheer (logica voor ballen)
+# =========================
 
 class Bal:
     def __init__(self, x, y):
@@ -26,23 +30,22 @@ class Bal:
 
         # Rechthoek voor collision-detectie
         self.rect = pygame.Rect(
-            x - self.radius,
-            y - self.radius,
-            self.radius * 2,
-            self.radius * 2
+            x - self.radius, y - self.radius,
+            self.radius * 2, self.radius * 2
         )
 
         # Afbeelding van de bal
         self.image = None
         self.load_image()
 
+    # -------------------------
+    # Afbeelding laden
+    # -------------------------
     def load_image(self):
-        # Laad de bal-afbeelding als deze bestaat
         BALL_IMAGE = BALL_IMAGE_PATH
         if BALL_IMAGE and os.path.exists(BALL_IMAGE):
             try:
                 self.image = pygame.image.load(BALL_IMAGE).convert_alpha()
-                # Schaal de afbeelding naar de juiste grootte
                 self.image = pygame.transform.scale(
                     self.image, (self.radius * 2, self.radius * 2)
                 )
@@ -50,79 +53,87 @@ class Bal:
                 print(f"Could not load ball image: {e}")
                 self.image = None
 
+    # -------------------------
+    # Lanceer de bal
+    # -------------------------
     def launch(self):
-        # Lanceer de bal met een willekeurige hoek
         if not self.launched:
             self.launched = True
             angle = random.uniform(-0.5, 0.5)
             self.vx = self.speed * angle
             self.vy = -self.speed
 
+    # -------------------------
+    # Update positie van de bal
+    # -------------------------
     def update(self, paddle=None):
-    # Volg de peddel zolang de bal niet gelanceerd is
+        # Volg de peddel zolang de bal niet gelanceerd is
         if not self.launched and paddle:
             self.x = paddle.rect.centerx
             self.y = paddle.rect.top - self.radius
             self.rect.center = (int(self.x), int(self.y))
             return
 
-    # Normale beweging na launch
+        # Normale beweging na launch
         self.x += self.vx
         self.y += self.vy
 
         surf = pygame.display.get_surface()
         sw = surf.get_width() if surf else SCREEN_WIDTH
 
+        # Botsing met linker- en rechterrand
         if self.x - self.radius < 0 or self.x + self.radius > sw:
             self.vx = -self.vx
             self.x = max(self.radius, min(sw - self.radius, self.x))
 
+        # Botsing met bovenkant van scherm
         if self.y - self.radius < 0:
             self.vy = -self.vy
             self.y = self.radius
 
         self.rect.center = (int(self.x), int(self.y))
 
+    # -------------------------
+    # Botsing met peddel
+    # -------------------------
     def bounce_paddle(self, paddle):
-        # Laat de bal omhoog stuiteren bij botsing met het paddle
         self.vy = -abs(self.vy)
-
-        # Bepaal waar de bal het paddle raakt (links/rechts)
         hit_pos = (self.x - paddle.rect.left) / paddle.rect.width
         self.vx = (hit_pos - 0.5) * 8
-
-        # Zet de bal net boven het paddle
         self.y = paddle.rect.top - self.radius
 
+    # -------------------------
+    # Botsing met baksteen
+    # -------------------------
     def bounce_brick(self):
-        # Keer de verticale snelheid om bij botsing met een steen
         self.vy = -self.vy
 
+    # -------------------------
+    # Snelheid aanpassen
+    # -------------------------
     def slow_down(self):
-        # Verlaag de snelheid van de bal
         self.speed = self.base_speed * 0.7
         self.vx *= 0.7
         self.vy *= 0.7
 
     def speed_up(self):
-        # Zet de snelheid terug naar normaal
         self.speed = self.base_speed
         self.vx = self.vx / 0.7 if self.vx != 0 else 0
         self.vy = self.vy / 0.7 if self.vy != 0 else 0
 
+    # -------------------------
+    # Tekenen
+    # -------------------------
     def draw(self, screen):
-        # Teken de bal (afbeelding of cirkel)
         if self.image:
-            screen.blit(
-                self.image,
-                (int(self.x) - self.radius, int(self.y) - self.radius)
-            )
+            screen.blit(self.image, (int(self.x) - self.radius, int(self.y) - self.radius))
         else:
-            pygame.draw.circle(
-                screen, WHITE, (int(self.x), int(self.y)), self.radius
-            )
+            pygame.draw.circle(screen, WHITE, (int(self.x), int(self.y)), self.radius)
 
 
+# =========================
+# Beheer van meerdere ballen
+# =========================
 class BalBeheer:
     def __init__(self):
         # Lijst met actieve ballen
@@ -143,9 +154,9 @@ class BalBeheer:
             ball.launch()
 
     def update(self, paddle):
+        # Update alle ballen, volg paddle indien nodig
         for ball in self.balls:
             ball.update(paddle)
-
 
     def draw(self, screen):
         # Teken alle ballen
