@@ -58,28 +58,29 @@ class Bal:
             self.vx = self.speed * angle
             self.vy = -self.speed
 
-    def update(self):
-        # Update de positie van de bal als deze is gelanceerd
-        if self.launched:
-            self.x += self.vx
-            self.y += self.vy
+    def update(self, paddle=None):
+    # Volg de peddel zolang de bal niet gelanceerd is
+        if not self.launched and paddle:
+            self.x = paddle.rect.centerx
+            self.y = paddle.rect.top - self.radius
+            self.rect.center = (int(self.x), int(self.y))
+            return
 
-            # Haal de schermgrootte op
-            surf = pygame.display.get_surface()
-            sw = surf.get_width() if surf else SCREEN_WIDTH
-            sh = surf.get_height() if surf else SCREEN_HEIGHT
+    # Normale beweging na launch
+        self.x += self.vx
+        self.y += self.vy
 
-            # Botsing met linker- en rechterrand
-            if self.x - self.radius < 0 or self.x + self.radius > sw:
-                self.vx = -self.vx
-                self.x = max(self.radius, min(sw - self.radius, self.x))
+        surf = pygame.display.get_surface()
+        sw = surf.get_width() if surf else SCREEN_WIDTH
 
-            # Botsing met de bovenkant van het scherm
-            if self.y - self.radius < 0:
-                self.vy = -self.vy
-                self.y = max(self.radius, self.y)
+        if self.x - self.radius < 0 or self.x + self.radius > sw:
+            self.vx = -self.vx
+            self.x = max(self.radius, min(sw - self.radius, self.x))
 
-        # Update de collision-rect
+        if self.y - self.radius < 0:
+            self.vy = -self.vy
+            self.y = self.radius
+
         self.rect.center = (int(self.x), int(self.y))
 
     def bounce_paddle(self, paddle):
@@ -141,10 +142,10 @@ class BalBeheer:
         for ball in self.balls:
             ball.launch()
 
-    def update(self):
-        # Update alle ballen
+    def update(self, paddle):
         for ball in self.balls:
-            ball.update()
+            ball.update(paddle)
+
 
     def draw(self, screen):
         # Teken alle ballen

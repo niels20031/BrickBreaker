@@ -1,17 +1,13 @@
+import pygame, json, os, random, traceback
+from enum import Enum
 from brickbreaker.balls import Bal, BalBeheer
 from brickbreaker.paddles import Peddel
 from brickbreaker.bricks import Baksteen
 from brickbreaker.powerups import Powerup, PowerupType
 from brickbreaker.constants import *
-import pygame
-import json
-import os
-import random
-from enum import Enum
-import traceback
 
-# Enum voor spelstatussen
-
+pygame.init()
+pygame.font.init()
 
 class GameState(Enum):
     MENU = 1
@@ -19,468 +15,188 @@ class GameState(Enum):
     GAME_OVER = 3
 
 
-pygame.init()
-pygame.font.init()
-
-HIGH_SCORE_FILE = "high_score.json"
-
-DEFAULT_HIGH_SCORE = {"infinite_score": 0, "infinite_date": "Never"}
-
-
 class Game:
     def __init__(self):
-        # minimale staat
-        self.settings = {}
-        self.high_score_data = self.load_high_score()
-        # herrinering van schermgroottes voor toggling
+        self.state = GameState.MENU
+        self.running = True
+        self.clock = pygame.time.Clock()
+
         self.windowed_size = (SCREEN_WIDTH, SCREEN_HEIGHT)
         self.setup_display()
-        self.clock = pygame.time.Clock()
-        self.running = True
-        self.state = GameState.MENU
-        # infinite-only mode
-        self.infinite_mode = True
-        self.current_level = 1
-        self.lives = 3
-        self.score = 0
-        self.font_large = pygame.font.Font(None, 64)
-        self.font_medium = pygame.font.Font(None, 48)
-        self.font_small = pygame.font.Font(None, 36)
-        self.font_tiny = pygame.font.Font(None, 28)
 
-        # Initialiseer spelobjecten
-        self.reset_game()
+        self.fonts = {
+            "l": pygame.font.Font(None, 64),
+            "m": pygame.font.Font(None, 48),
+            "s": pygame.font.Font(None, 36),
+            "t": pygame.font.Font(None, 28),
+        }
+
+        self.reset_all()
+
+    # ---------- SETUP ----------
 
     def setup_display(self):
-        # Probeer fullscreen modus voor native resolutie.
-        # Val terug op standaard waarde als dat mislukt.
-        try:
-            info = pygame.display.Info()
-            native_w, native_h = info.current_w, info.current_h
-            # Gebruik native resolutie voor fullscreen
-            self.screen = pygame.display.set_mode(
-                (native_w, native_h), pygame.FULLSCREEN)
-            # update globale schermgrootte constanten
-            globals()['SCREEN_WIDTH'] = native_w
-            globals()['SCREEN_HEIGHT'] = native_h
-            # bewaar native grootte
-            self.native_size = (native_w, native_h)
-            self.fullscreen = True
-            # maak aanpassingen voor nieuwe grootte
-            try:
-                self.on_resize()
-            except Exception:
-                pass
-        except Exception as e:
-            print("setup_display fullscreen failed:", e)
-            # val terug op windowed modus
-            self.screen = pygame.display.set_mode(self.windowed_size)
-            self.native_size = self.windowed_size
-            self.fullscreen = False
+    # Start altijd in windowed mode met vaste resolutie
+        self.fullscreen = False
+        self.screen = pygame.display.set_mode(
+        (SCREEN_WIDTH, SCREEN_HEIGHT)
+    )
+    pygame.display.set_caption("Brick Breaker")
 
-        pygame.display.set_caption("Brick Breaker")
 
-    # Instellingen verwijderd: load_settings en save_settings verwijderd
+    # ---------- GAME RESET ----------
 
-    def load_high_score(self):
-        if os.path.exists(HIGH_SCORE_FILE):
-            try:
-                with open(HIGH_SCORE_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, OSError):
-                return DEFAULT_HIGH_SCORE.copy()
-        return DEFAULT_HIGH_SCORE.copy()
-
-    def save_high_score(self):
-        try:
-            with open(HIGH_SCORE_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.high_score_data, f, indent=2)
-        except OSError as e:
-            print("Failed to save high score:", e)
-
-    def update_high_score(self):
-        from datetime import datetime
-        if self.score > self.high_score_data.get("infinite_score", 0):
-            self.high_score_data["infinite_score"] = self.score
-            self.high_score_data["infinite_date"] = datetime.now().strftime(
-                "%Y-%m-%d %H:%M")
-            self.save_high_score()
-
-    # Geluidsafhandeling verwijderd
-
-    def apply_powerup(self, powerup):
-        if powerup.type == PowerupType.WIDER_PADDLE:
-            self.peddel.activate_wider()
-        elif powerup.type == PowerupType.MULTI_BALL:
-            # Dupliceer alle bestaande ballen
-            new_balls = []
-            for bal in self.bal_beheer.balls:
-                new_bal = Bal(bal.x, bal.y)
-                new_bal.vx = -bal.vx
-                new_bal.vy = bal.vy
-                new_bal.launched = bal.launched
-                new_balls.append(new_bal)
-            for bal in new_balls:
-                self.bal_beheer.add_ball(bal)
-        elif powerup.type == PowerupType.SLOW_BALL:
-            self.slow_ball_active = True
-            self.slow_ball_duration = 300
-            for bal in self.bal_beheer.balls:
-                bal.slow_down()
-        elif powerup.type == PowerupType.DOUBLE_DAMAGE:
-            # dubbele schade voor een tijd
-            self.damage_multiplier = 2
-            self.damage_duration = 600  # frames (10s bij 60hz)
+    def reset_all(self):
+        self.level = 1
+        self.lives = 3
+        self.score = 0
+        self.reset_game()
 
     def reset_game(self):
         self.peddel = Peddel(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50)
-        self.bal_beheer = BalBeheer()
-        self.bal_beheer.add_ball(Bal(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80))
-        self.bricks = self.create_infinite_level(self.current_level)
+        self.balls = BalBeheer()
+        self.balls.add_ball(Bal(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80))
+        self.bricks = self.generate_level(self.level)
         self.powerups = []
-        self.game_active = True
-        self.slow_ball_active = False
-        self.slow_ball_duration = 0
-        self.damage_multiplier = 1
-        self.damage_duration = 0
+        self.damage_mult = 1
+        self.damage_timer = 0
+        self.slow_timer = 0
 
-    def on_resize(self):
-        # Pas de paddle en ballen aan op nieuwe schermgrootte
-        if hasattr(self, 'peddel'):
-            self.peddel.x = max(
-                0, min(self.peddel.x, SCREEN_WIDTH - self.peddel.width))
-            self.peddel.update_rect()
-        if hasattr(self, 'bal_beheer'):
-            for b in self.bal_beheer.balls:
-                b.x = max(b.radius, min(b.x, SCREEN_WIDTH - b.radius))
-                b.y = max(b.radius, min(b.y, SCREEN_HEIGHT - b.radius))
-                b.rect.center = (int(b.x), int(b.y))
-        # Regenereer bakstenen voor het huidige niveau
-        try:
-            self.bricks = self.create_infinite_level(self.current_level)
-        except Exception:
-            pass
+    # ---------- LEVEL ----------
 
-    # alleen oneindige modus ondersteund
-
-    def create_infinite_level(self, level_index):
-        """Generate a random brick layout for infinite mode.
-        Difficulty scales with level_index: more rows/stronger bricks.
-        """
+    def generate_level(self, lvl):
         bricks = []
-        # Vergroot aantal rijen en kolommen met niveau
-        base_rows = 3
-        rows = min(12, base_rows + level_index // 2 + random.randint(0, 2))
+        rows = min(12, 3 + lvl // 2)
         cols = random.randint(6, 10)
-        padding = 4
-        # Maak bakstenen passend binnen schermbreedte
-        total_padding = (cols - 1) * padding
-        brick_width = max(60, (SCREEN_WIDTH - 200 - total_padding) // cols)
-        brick_height = 22
-        start_x = (SCREEN_WIDTH -
-                   (cols * (brick_width + padding) - padding)) // 2
-        start_y = 40
+        bw = max(60, (SCREEN_WIDTH - 200) // cols)
+        bh = 22
 
-        # Genereer bakstenen met moeilijkheidsgewichten
-        for row in range(rows):
-            for col in range(cols):
-                x = start_x + col * (brick_width + padding)
-                y = start_y + row * (brick_height + padding)
-                # Bepaal kleur op basis van sterkte
-                red_chance = min(0.15 + level_index * 0.01, 0.5)
-                yellow_chance = min(0.25 + level_index * 0.02, 0.5)
-                r = random.random()
-                if r < red_chance:
-                    color = RED
-                elif r < red_chance + yellow_chance:
-                    color = YELLOW
-                else:
-                    color = GREEN
-                bricks.append(Baksteen(x, y, brick_width, brick_height, color))
-
+        start_x = (SCREEN_WIDTH - cols * bw) // 2
+        for r in range(rows):
+            for c in range(cols):
+                color = random.choices(
+                    [GREEN, YELLOW, RED],
+                    weights=[50, 30 + lvl * 2, 20 + lvl],
+                )[0]
+                bricks.append(Baksteen(
+                    start_x + c * bw,
+                    50 + r * (bh + 4),
+                    bw, bh, color
+                ))
         return bricks
 
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                # Sla progressie op in json bestand
-                try:
-                    self.update_high_score()
-                except Exception:
-                    pass
-                self.running = False
-            elif event.type == pygame.KEYDOWN:
-                # Toggle fullscreen met F11
-                if event.key == pygame.K_F11:
-                    try:
-                        if getattr(self, 'fullscreen', False):
-                            # switch to windowed
-                            self.screen = pygame.display.set_mode(
-                                self.windowed_size)
-                            globals()['SCREEN_WIDTH'], globals()[
-                                'SCREEN_HEIGHT'] = self.windowed_size
-                            self.fullscreen = False
-                            try:
-                                self.on_resize()
-                            except Exception:
-                                pass
-                        else:
-                            # switch to native fullscreen
-                            self.screen = pygame.display.set_mode(
-                                self.native_size, pygame.FULLSCREEN)
-                            globals()['SCREEN_WIDTH'], globals()[
-                                'SCREEN_HEIGHT'] = self.native_size
-                            self.fullscreen = True
-                            try:
-                                self.on_resize()
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+    # ---------- INPUT ----------
 
-                if event.key == pygame.K_ESCAPE:
+    def handle_events(self):
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                self.running = False
+
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
                     if self.state == GameState.MENU:
-                        try:
-                            self.update_high_score()
-                        except Exception:
-                            pass
-                        self.running = False
+                        self.running = False   # spel afsluiten
                     else:
-                        # terug naar menu vanuit spel of game over
                         self.state = GameState.MENU
 
-                # Menu input: start infinite mode
-                if self.state == GameState.MENU and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE or event.key == pygame.K_i):
-                    self.current_level = 1
-                    self.lives = 3
-                    self.score = 0
-                    self.reset_game()
+                if self.state == GameState.MENU and e.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    self.reset_all()
                     self.state = GameState.PLAYING
 
-                # Game input
-                elif self.state == GameState.PLAYING and event.key == pygame.K_SPACE:
-                    self.bal_beheer.launch_all()
+                if self.state == GameState.PLAYING and e.key == pygame.K_SPACE:
+                    self.balls.launch_all()
 
-                # Game over: afsluiten of terug naar menu
-                elif self.state == GameState.GAME_OVER:
-                    self.current_level = 1
-                    self.lives = 3
-                    self.score = 0
-                    self.state = GameState.MENU
+    # ---------- UPDATE ----------
 
     def update(self):
-        if self.state == GameState.PLAYING and self.game_active:
-            # Verplaats peddel
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                self.peddel.move(-1)
-            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                self.peddel.move(1)
+        if self.state != GameState.PLAYING:
+            return
 
-            self.peddel.update()
+        keys = pygame.key.get_pressed()
+        self.peddel.move((keys[pygame.K_RIGHT] or keys[pygame.K_d]) -
+                         (keys[pygame.K_LEFT] or keys[pygame.K_a]))
+        self.peddel.update()
+        self.balls.update(self.peddel)
 
-            # Update ballen
-            self.bal_beheer.update()
+        if self.damage_timer > 0:
+            self.damage_timer -= 1
+        else:
+            self.damage_mult = 1
 
-            # Update langzame bal effect
-            if self.slow_ball_active:
-                self.slow_ball_duration -= 1
-                if self.slow_ball_duration <= 0:
-                    self.slow_ball_active = False
-                    for ball in self.bal_beheer.balls:
-                        ball.speed_up()
+        if self.slow_timer > 0:
+            self.slow_timer -= 1
 
-            # Update dubele schade effect
-            if getattr(self, 'damage_duration', 0) > 0:
-                self.damage_duration -= 1
-                if self.damage_duration <= 0:
-                    self.damage_multiplier = 1
+        for ball in self.balls.balls[:]:
+            if ball.rect.colliderect(self.peddel.rect):
+                ball.bounce_paddle(self.peddel)
 
-            # Update power-ups
-            for powerup in self.powerups[:]:
-                powerup.update()
-                if powerup.is_collected(self.peddel):
-                    self.apply_powerup(powerup)
-                    self.powerups.remove(powerup)
-                elif powerup.rect.top > SCREEN_HEIGHT:
-                    self.powerups.remove(powerup)
+            for brick in self.bricks[:]:
+                if ball.rect.colliderect(brick.rect):
+                    ball.bounce_brick()
+                    brick.take_damage_amount(self.damage_mult)
+                    if brick.is_destroyed():
+                        self.bricks.remove(brick)
+                        self.score += brick.points
+                        if random.random() < 0.15:
+                            self.powerups.append(
+                                Powerup(brick.rect.centerx, brick.rect.top, random.choice(list(PowerupType)))
+                            )
+                    break
 
-            # Check elke bal voor botsingen
-            balls_to_remove = []
-            for ball in self.bal_beheer.balls:
-                # Ball-paddle collision
-                if ball.rect.colliderect(self.peddel.rect):
-                    ball.bounce_paddle(self.peddel)
+            if ball.rect.top > SCREEN_HEIGHT:
+                self.balls.remove_ball(ball)
 
-                # Ball-steen collision
-                for brick in self.bricks[:]:
-                    if ball.rect.colliderect(brick.rect):
-                        ball.bounce_brick()
-                        # Pas schadevermenigvuldiger toe als actief
-                        try:
-                            dmg = int(getattr(self, 'damage_multiplier', 1))
-                        except Exception:
-                            dmg = 1
-                        brick.take_damage_amount(dmg)
+        if not self.balls.balls:
+            self.lives -= 1
+            if self.lives <= 0:
+                self.state = GameState.GAME_OVER
+            else:
+                self.balls.add_ball(Bal(self.peddel.rect.centerx, SCREEN_HEIGHT - 80))
 
-                        if brick.is_destroyed():
-                            # verwijder baksteen zonder animatie
-                            self.bricks.remove(brick)
-                            self.score += brick.points
-                            # Update high score met nieuwe score
-                            try:
-                                self.update_high_score()
-                            except Exception:
-                                pass
-                            # kans op power-up
-                            if random.random() < 0.15:  # 15% kans
-                                powerup_type = random.choice(
-                                    [PowerupType.WIDER_PADDLE, PowerupType.MULTI_BALL, PowerupType.SLOW_BALL])
-                                # spawn power-up iets boven de vernietigde baksteen zodat hij naar beneden valt
-                                spawn_x = brick.rect.centerx
-                                spawn_y = brick.rect.top - 20
-                                pu = Powerup(spawn_x, spawn_y, powerup_type)
-                                pu.velocity = 3
-                                self.powerups.append(pu)
-                        break
+        if not self.bricks:
+            self.level += 1
+            self.score += 200
+            self.bricks = self.generate_level(self.level)
 
-                # Bal uit scherm
-                if ball.rect.top > SCREEN_HEIGHT:
-                    balls_to_remove.append(ball)
-
-            # Verwijder ballen die uit het scherm zijn
-            for ball in balls_to_remove:
-                self.bal_beheer.remove_ball(ball)
-
-            # Als er geen ballen meer zijn, verlies een leven
-            if len(self.bal_beheer.balls) == 0:
-                self.lives -= 1
-                if self.lives <= 0:
-                    self.state = GameState.GAME_OVER
-                    self.update_high_score()
-                else:
-                    new_ball = Bal(int(self.peddel.rect.centerx),
-                                   SCREEN_HEIGHT - 80)
-                    self.bal_beheer.add_ball(new_ball)
-
-            # Level complete (infinite-only): genereer nieuw niveau
-            if len(self.bricks) == 0:
-                self.current_level += 1
-                self.score += 200 * self.current_level
-                try:
-                    self.update_high_score()
-                except Exception:
-                    pass
-                self.bricks = self.create_infinite_level(self.current_level)
+    # ---------- DRAW ----------
 
     def draw(self):
         self.screen.fill(DARK_BLUE)
-
         if self.state == GameState.MENU:
             self.draw_menu()
         elif self.state == GameState.PLAYING:
             self.draw_game()
-        elif self.state == GameState.GAME_OVER:
+        else:
             self.draw_game_over()
-
         pygame.display.flip()
 
     def draw_menu(self):
-        title = self.font_large.render("BRICK BREAKER", True, WHITE)
-        self.screen.blit(title, ((SCREEN_WIDTH - title.get_width()) // 2, 150))
-
-        high_score_text = self.font_small.render(
-            f"Top Score: {self.high_score_data.get('score',0)}", True, YELLOW)
-        self.screen.blit(
-            high_score_text, ((SCREEN_WIDTH - high_score_text.get_width()) // 2, 240))
-
-        infinite_text = self.font_small.render(
-            f"Oneindige Top: {self.high_score_data.get('infinite_score',0)}", True, LIGHT_BLUE)
-        self.screen.blit(
-            infinite_text, ((SCREEN_WIDTH - infinite_text.get_width()) // 2, 280))
-
-        start_text = self.font_medium.render(
-            "Druk SPATIE of I om Oneindige Modus te starten", True, LIGHT_BLUE)
-        self.screen.blit(
-            start_text, ((SCREEN_WIDTH - start_text.get_width()) // 2, 320))
-
-        quit_text = self.font_tiny.render(
-            "Druk ESC om af te sluiten", True, GRAY)
-        self.screen.blit(
-            quit_text, ((SCREEN_WIDTH - quit_text.get_width()) // 2, 500))
+        f = self.fonts
+        self.blit_center(f["l"], "BRICK BREAKER", 150)
+        self.blit_center(f["s"], "Druk SPATIE om te starten", 320)
 
     def draw_game(self):
         self.peddel.draw(self.screen)
-        self.bal_beheer.draw(self.screen)
-
-        for brick in self.bricks:
-            brick.draw(self.screen, self.font_tiny)
-
-        for powerup in self.powerups:
-            powerup.draw(self.screen)
-
-        # HUD
-        level_text = self.font_small.render(
-            f"Niveau: {self.current_level}", True, WHITE)
-        self.screen.blit(level_text, (20, 20))
-
-        lives_text = self.font_small.render(f"Levens: {self.lives}", True, RED)
-        self.screen.blit(lives_text, (SCREEN_WIDTH -
-                         lives_text.get_width() - 20, 20))
-
-        score_text = self.font_small.render(
-            f"Score: {self.score}", True, YELLOW)
-        self.screen.blit(
-            score_text, ((SCREEN_WIDTH - score_text.get_width()) // 2, 20))
-
-        # Top score weergeven
-        high_score_text = self.font_tiny.render(
-            f"Top Score: {self.high_score_data['score']}", True, LIGHT_BLUE)
-        self.screen.blit(high_score_text, (20, 70))
-
-        # Aantal ballen weergeven als meer dan 1
-        if len(self.bal_beheer.balls) > 1:
-            balls_text = self.font_tiny.render(
-                f"Ballen: {len(self.bal_beheer.balls)}", True, LIGHT_BLUE)
-            self.screen.blit(balls_text, (20, 110))
-
-        # Laat bredere peddel status zien
-        if self.peddel.wider_duration > 0:
-            boost_text = self.font_tiny.render("BREDERE PEDDEL", True, ORANGE)
-            self.screen.blit(
-                boost_text, ((SCREEN_WIDTH - boost_text.get_width()) // 2, 70))
-
-        # Laat langzame bal status zien
-        if self.slow_ball_active:
-            slow_text = self.font_tiny.render("TRAAGMODUS", True, PURPLE)
-            self.screen.blit(slow_text, (SCREEN_WIDTH -
-                             slow_text.get_width() - 20, 70))
-
-        if len(self.bal_beheer.balls) > 0 and not self.bal_beheer.balls[0].launched:
-            launch_text = self.font_tiny.render(
-                "Druk SPATIE om te lanceren", True, LIGHT_BLUE)
-            self.screen.blit(
-                launch_text, ((SCREEN_WIDTH - launch_text.get_width()) // 2, SCREEN_HEIGHT - 30))
+        self.balls.draw(self.screen)
+        for b in self.bricks:
+            b.draw(self.screen, self.fonts["t"])
+        self.draw_hud()
 
     def draw_game_over(self):
-        game_over_text = self.font_large.render("GAME OVER", True, RED)
-        self.screen.blit(
-            game_over_text, ((SCREEN_WIDTH - game_over_text.get_width()) // 2, 150))
+        self.blit_center(self.fonts["l"], "GAME OVER", 200)
+        self.blit_center(self.fonts["m"], f"Score: {self.score}", 300)
+        self.blit_center(self.fonts["s"], "Druk SPATIE", 400)
 
-        score_text = self.font_medium.render(
-            f"Uiteindelijke Score: {self.score}", True, YELLOW)
-        self.screen.blit(
-            score_text, ((SCREEN_WIDTH - score_text.get_width()) // 2, 300))
+    def draw_hud(self):
+        f = self.fonts["s"]
+        self.screen.blit(f.render(f"Score: {self.score}", True, YELLOW), (20, 20))
+        self.screen.blit(f.render(f"Levens: {self.lives}", True, RED), (SCREEN_WIDTH - 150, 20))
 
-        level_text = self.font_small.render(
-            f"Niveau bereikt: {self.current_level}", True, LIGHT_BLUE)
-        self.screen.blit(
-            level_text, ((SCREEN_WIDTH - level_text.get_width()) // 2, 400))
+    def blit_center(self, font, text, y):
+        surf = font.render(text, True, WHITE)
+        self.screen.blit(surf, ((SCREEN_WIDTH - surf.get_width()) // 2, y))
 
-        restart_text = self.font_small.render(
-            "Druk SPATIE om terug naar menu", True, YELLOW)
-        self.screen.blit(
-            restart_text, ((SCREEN_WIDTH - restart_text.get_width()) // 2, 500))
+    # ---------- LOOP ----------
 
     def run(self):
         while self.running:
@@ -494,13 +210,6 @@ class Game:
             self.clock.tick(FPS)
 
 
-# Start het spel
 if __name__ == "__main__":
-    try:
-        game = Game()
-        game.run()
-    except Exception as e:
-        traceback.print_exc()
-    finally:
-        pygame.quit()
-
+    Game().run()
+    pygame.quit()
