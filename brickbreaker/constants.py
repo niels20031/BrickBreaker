@@ -1,6 +1,4 @@
 # Scherm en constante variabelen
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
 FPS = 60
 
 # Bal image pad

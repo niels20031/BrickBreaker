@@ -8,9 +8,12 @@ from brickbreaker.constants import *
 
 # Initialiseer pygame en fonts
 pygame.init()
-pygame.font.init()
+res = pygame.display.get_desktop_sizes()
 
+width = res[0][0]
+height = res[0][1]
 
+print(width, height)
 # =========================
 # NIELS – BACKEND
 # Game states (menu, spelen, game over)
@@ -34,7 +37,7 @@ class Game:
         # ORKUN – FRONTEND
         # Scherm en fonts
         # =========================
-        self.windowed_size = (SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.windowed_size = (width, height)
         self.setup_display()
 
         # Verschillende lettergroottes voor UI
@@ -54,9 +57,10 @@ class Game:
     # =========================
     def setup_display(self):
         # Windowed mode met vaste resolutie
+        
         self.fullscreen = False
         self.screen = pygame.display.set_mode(
-            (SCREEN_WIDTH, SCREEN_HEIGHT)
+            (width, height)
         )
         pygame.display.set_caption("Brick Breaker")
 
@@ -73,12 +77,12 @@ class Game:
 
     def reset_game(self):
         # Maak peddel aan onderin het scherm
-        self.peddel = Peddel(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50)
+        self.peddel = Peddel(width // 2, height - 50)
 
         # Beheer van ballen
         self.balls = BalBeheer()
         self.balls.add_ball(
-            Bal(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80)
+            Bal(width // 2, height - 80)
         )
 
         # Genereer bakstenen voor het level
@@ -104,11 +108,11 @@ class Game:
         cols = random.randint(6, 10)
 
         # Grootte van bakstenen
-        bw = max(60, (SCREEN_WIDTH - 200) // cols)
+        bw = max(60, (width - 200) // cols)
         bh = 22
 
         # Centreer de bakstenen
-        start_x = (SCREEN_WIDTH - cols * bw) // 2
+        start_x = (width - cols * bw) // 2
 
         for r in range(rows):
             for c in range(cols):
@@ -203,7 +207,7 @@ class Game:
                     break
 
             # Bal uit scherm
-            if ball.rect.top > SCREEN_HEIGHT:
+            if ball.rect.top > height:
                 self.balls.remove_ball(ball)
 
         # Geen ballen meer = leven kwijt
@@ -213,7 +217,7 @@ class Game:
                 self.state = GameState.GAME_OVER
             else:
                 self.balls.add_ball(
-                    Bal(self.peddel.rect.centerx, SCREEN_HEIGHT - 80)
+                    Bal(self.peddel.rect.centerx, height - 80)
                 )
 
         # Level afgerond
@@ -264,14 +268,14 @@ class Game:
         )
         self.screen.blit(
             f.render(f"Levens: {self.lives}", True, RED),
-            (SCREEN_WIDTH - 150, 20)
+            (width - 150, 20)
         )
 
     def blit_center(self, font, text, y):
         # Tekst horizontaal centreren
         surf = font.render(text, True, WHITE)
         self.screen.blit(
-            surf, ((SCREEN_WIDTH - surf.get_width()) // 2, y)
+            surf, ((width - surf.get_width()) // 2, y)
         )
 
     # =========================
