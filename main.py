@@ -69,9 +69,7 @@ class Game:
         # Windowed mode met vaste resolutie
 
         self.fullscreen = False
-        self.screen = pygame.display.set_mode(
-            (width, height)
-        )
+        self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("Brick Breaker")
 
     # =========================
@@ -91,9 +89,7 @@ class Game:
 
         # Beheer van ballen
         self.balls = BalBeheer()
-        self.balls.add_ball(
-            Bal(width // 2, height - 80)
-        )
+        self.balls.add_ball(Bal(width // 2, height - 80))
 
         # Genereer bakstenen voor het level
         self.bricks = self.generate_level(self.level)
@@ -129,11 +125,9 @@ class Game:
                     weights=[50, 30 + lvl * 2, 20 + lvl],
                 )[0]
 
-                bricks.append(Baksteen(
-                    start_x + c * bw,
-                    50 + r * (bh + 4),
-                    bw, bh, color
-                ))
+                bricks.append(
+                    Baksteen(start_x + c * bw, 50 + r * (bh + 4), bw, bh, color)
+                )
         return bricks
 
     # =========================
@@ -156,7 +150,8 @@ class Game:
 
                 # Start spel vanuit menu
                 if self.state == GameState.MENU and e.key in (
-                    pygame.K_SPACE, pygame.K_RETURN
+                    pygame.K_SPACE,
+                    pygame.K_RETURN,
                 ):
                     self.reset_all()
                     self.state = GameState.PLAYING
@@ -177,8 +172,8 @@ class Game:
         # Beweeg peddel met pijltjes of A/D
         keys = pygame.key.get_pressed()
         self.peddel.move(
-            (keys[pygame.K_RIGHT] or keys[pygame.K_d]) -
-            (keys[pygame.K_LEFT] or keys[pygame.K_a])
+            (keys[pygame.K_RIGHT] or keys[pygame.K_d])
+            - (keys[pygame.K_LEFT] or keys[pygame.K_a])
         )
         self.peddel.update()
 
@@ -214,9 +209,7 @@ class Game:
             if self.lives <= 0:
                 self.state = GameState.GAME_OVER
             else:
-                self.balls.add_ball(
-                    Bal(self.peddel.rect.centerx, height - 80)
-                )
+                self.balls.add_ball(Bal(self.peddel.rect.centerx, height - 80))
 
         # Level afgerond
         if not self.bricks:
@@ -261,20 +254,15 @@ class Game:
 
     def draw_hud(self):
         f = self.fonts["s"]
+        self.screen.blit(f.render(f"Score: {self.score}", True, YELLOW), (20, 20))
         self.screen.blit(
-            f.render(f"Score: {self.score}", True, YELLOW), (20, 20)
-        )
-        self.screen.blit(
-            f.render(f"Levens: {self.lives}", True, RED),
-            (width - 150, 20)
+            f.render(f"Levens: {self.lives}", True, RED), (width - 150, 20)
         )
 
     def blit_center(self, font, text, y):
         # Tekst horizontaal centreren
         surf = font.render(text, True, WHITE)
-        self.screen.blit(
-            surf, ((width - surf.get_width()) // 2, y)
-        )
+        self.screen.blit(surf, ((width - surf.get_width()) // 2, y))
 
     # =========================
     # NIELS – BACKEND
