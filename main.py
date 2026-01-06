@@ -1,4 +1,8 @@
-import pygame, json, os, random, traceback
+import pygame
+import json
+import os
+import random
+import traceback
 from enum import Enum
 from brickbreaker.balls import Bal, BalBeheer
 from brickbreaker.paddles import Peddel
@@ -10,14 +14,20 @@ from brickbreaker.constants import *
 pygame.init()
 res = pygame.display.get_desktop_sizes()
 
-width = res[1][0]
-height = res[1][1]
+# Gebruik de primaire display als beschikbaar, anders fallback naar pygame.display.Info()
+if res:
+    width, height = res[0]
+else:
+    info = pygame.display.Info()
+    width, height = info.current_w, info.current_h
 
 print(width, height)
 # =========================
 # NIELS – BACKEND
 # Game states (menu, spelen, game over)
 # =========================
+
+
 class GameState(Enum):
     MENU = 1
     PLAYING = 2
@@ -57,7 +67,7 @@ class Game:
     # =========================
     def setup_display(self):
         # Windowed mode met vaste resolutie
-        
+
         self.fullscreen = False
         self.screen = pygame.display.set_mode(
             (width, height)
@@ -87,7 +97,6 @@ class Game:
 
         # Genereer bakstenen voor het level
         self.bricks = self.generate_level(self.level)
-
 
         # Timers voor effecten
         self.damage_mult = 1
