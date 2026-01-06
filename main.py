@@ -3,15 +3,15 @@ from enum import Enum
 from brickbreaker.balls import Bal, BalBeheer
 from brickbreaker.paddles import Peddel
 from brickbreaker.bricks import Baksteen
-from brickbreaker.powerups import Powerup, PowerupType
+
 from brickbreaker.constants import *
 
 # Initialiseer pygame en fonts
 pygame.init()
 res = pygame.display.get_desktop_sizes()
 
-width = res[0][0]
-height = res[0][1]
+width = res[1][0]
+height = res[1][1]
 
 print(width, height)
 # =========================
@@ -88,8 +88,6 @@ class Game:
         # Genereer bakstenen voor het level
         self.bricks = self.generate_level(self.level)
 
-        # Actieve power-ups
-        self.powerups = []
 
         # Timers voor effecten
         self.damage_mult = 1
@@ -195,15 +193,6 @@ class Game:
                         self.bricks.remove(brick)
                         self.score += brick.points
 
-                        # Kans op power-up
-                        if random.random() < 0.15:
-                            self.powerups.append(
-                                Powerup(
-                                    brick.rect.centerx,
-                                    brick.rect.top,
-                                    random.choice(list(PowerupType))
-                                )
-                            )
                     break
 
             # Bal uit scherm

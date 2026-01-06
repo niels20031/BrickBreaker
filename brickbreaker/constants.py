@@ -2,7 +2,7 @@
 FPS = 60
 
 # Bal image pad
-BALL_IMAGE_PATH = "img/Rein.JPEG"
+BALL_IMAGE_PATH = "img/rein.png"
 
 # Kleuren
 BLACK = (0, 0, 0)

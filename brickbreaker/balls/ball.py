@@ -47,7 +47,7 @@ class Bal:
             try:
                 self.image = pygame.image.load(BALL_IMAGE).convert_alpha()
                 self.image = pygame.transform.scale(
-                    self.image, (self.radius * 2, self.radius * 2)
+                    self.image, (self.radius * 3, self.radius * 3)
                 )
             except Exception as e:
                 print(f"Could not load ball image: {e}")
