@@ -22,10 +22,6 @@ class Peddel:
         # Beweegsnelheid
         self.speed = 7
 
-        # Timer voor bredere peddel power-up
-        self.wider_duration = 0
-        self.max_wider_duration = 900  # ongeveer 15 seconden bij 60 FPS
-
     # -------------------------
     # Beweging
     # -------------------------

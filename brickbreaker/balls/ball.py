@@ -55,6 +55,7 @@ class Bal:
                 self.image = None
 
     # -------------------------
+    # Niels
     # Lanceer de bal
     # -------------------------
     def launch(self):
@@ -108,19 +109,6 @@ class Bal:
     # -------------------------
     def bounce_brick(self):
         self.vy = -self.vy
-
-    # -------------------------
-    # Snelheid aanpassen
-    # -------------------------
-    def slow_down(self):
-        self.speed = self.base_speed * 0.7
-        self.vx *= 0.7
-        self.vy *= 0.7
-
-    def speed_up(self):
-        self.speed = self.base_speed
-        self.vx = self.vx / 0.7 if self.vx != 0 else 0
-        self.vy = self.vy / 0.7 if self.vy != 0 else 0
 
     # -------------------------
     # ORKUN
