@@ -48,28 +48,6 @@ class Peddel:
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
     # -------------------------
-    # Power-up functies
-    # -------------------------
-    def activate_wider(self):
-        # Maak peddel tijdelijk breder
-        self.width = int(self.base_width * 1.5)
-        self.wider_duration = self.max_wider_duration
-        self.update_rect()
-
-    def deactivate_wider(self):
-        # Zet breedte terug naar normaal
-        self.width = self.base_width
-        self.wider_duration = 0
-        self.update_rect()
-
-    def update(self):
-        # Tel de bredere peddel timer af
-        if self.wider_duration > 0:
-            self.wider_duration -= 1
-            if self.wider_duration == 0:
-                self.deactivate_wider()
-
-    # -------------------------
     # Teken de peddel
     # -------------------------
     def draw(self, screen):

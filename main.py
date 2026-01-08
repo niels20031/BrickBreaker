@@ -1,13 +1,10 @@
 import pygame
-import json
-import os
 import random
 import traceback
 from enum import Enum
 from brickbreaker.balls import Bal, BalBeheer
 from brickbreaker.paddles import Peddel
 from brickbreaker.bricks import Baksteen
-
 from brickbreaker.constants import *
 
 # Initialiseer pygame en fonts
@@ -22,6 +19,7 @@ else:
     width, height = info.current_w, info.current_h
 
 print(width, height)
+
 # =========================
 # NIELS – BACKEND
 # Game states (menu, spelen, game over)
@@ -39,7 +37,6 @@ class Game:
         # Huidige game status
         self.state = GameState.MENU
         self.running = True
-
         # Clock zorgt voor vaste FPS
         self.clock = pygame.time.Clock()
 
@@ -57,6 +54,7 @@ class Game:
             "s": pygame.font.Font(None, 36),
             "t": pygame.font.Font(None, 28),
         }
+        
 
         # Startwaarden instellen
         self.reset_all()
@@ -67,11 +65,10 @@ class Game:
     # =========================
     def setup_display(self):
         # Windowed mode met vaste resolutie
-
-        self.fullscreen = False
         self.screen = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("Brick Breaker")
+        pygame.display.set_caption("Brick Breaker - Reinoud edition - *Limited*")
 
+    
     # =========================
     # NIELS – BACKEND
     # Reset van hele game
@@ -93,11 +90,6 @@ class Game:
 
         # Genereer bakstenen voor het level
         self.bricks = self.generate_level(self.level)
-
-        # Timers voor effecten
-        self.damage_mult = 1
-        self.damage_timer = 0
-        self.slow_timer = 0
 
     # =========================
     # NIELS – BACKEND
@@ -144,7 +136,7 @@ class Game:
                 # ESC: terug naar menu of afsluiten
                 if e.key == pygame.K_ESCAPE:
                     if self.state == GameState.MENU:
-                        self.running = False
+                       self.running = False
                     else:
                         self.state = GameState.MENU
 
@@ -175,7 +167,6 @@ class Game:
             (keys[pygame.K_RIGHT] or keys[pygame.K_d])
             - (keys[pygame.K_LEFT] or keys[pygame.K_a])
         )
-        self.peddel.update()
 
         # Update ballen (volgen peddel indien niet gelanceerd)
         self.balls.update(self.peddel)
@@ -190,7 +181,7 @@ class Game:
             for brick in self.bricks[:]:
                 if ball.rect.colliderect(brick.rect):
                     ball.bounce_brick()
-                    brick.take_damage_amount(self.damage_mult)
+                    brick.take_damage_amount(1)
 
                     # Verwijder baksteen als kapot
                     if brick.is_destroyed():
