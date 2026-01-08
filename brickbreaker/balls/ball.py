@@ -39,6 +39,7 @@ class Bal:
         self.load_image()
 
     # -------------------------
+    # ORKUN
     # Afbeelding laden
     # -------------------------
     def load_image(self):
@@ -122,6 +123,7 @@ class Bal:
         self.vy = self.vy / 0.7 if self.vy != 0 else 0
 
     # -------------------------
+    # ORKUN
     # Tekenen
     # -------------------------
     def draw(self, screen):

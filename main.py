@@ -39,11 +39,6 @@ class Game:
         self.running = True
         # Clock zorgt voor vaste FPS
         self.clock = pygame.time.Clock()
-
-        # =========================
-        # ORKUN – FRONTEND
-        # Scherm en fonts
-        # =========================
         self.windowed_size = (width, height)
         self.setup_display()
 
@@ -256,7 +251,7 @@ class Game:
         self.screen.blit(surf, ((width - surf.get_width()) // 2, y))
 
     # =========================
-    # NIELS – BACKEND
+    # ORKUN – BACKEND
     # Hoofd game loop
     # =========================
     def run(self):
