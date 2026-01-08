@@ -236,7 +236,7 @@ class Game:
     def draw_game_over(self):
         self.blit_center(self.fonts["l"], "GAME OVER", 200)
         self.blit_center(self.fonts["m"], f"Score: {self.score}", 300)
-        self.blit_center(self.fonts["s"], "Druk SPATIE", 400)
+        self.blit_center(self.fonts["s"], "Druk Escape", 400)
 
     def draw_hud(self):
         f = self.fonts["s"]
